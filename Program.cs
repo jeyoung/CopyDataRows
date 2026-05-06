@@ -8,42 +8,35 @@ class Program
 {
     async Task CopyDataRows(string sourcePath, string destinationPath, Func<string, int> headerRowLocator, int bufferSize)
     {
-	try
+	using (var source = new FileStream(sourcePath, FileMode.Open, FileAccess.Read))
+	using (var destination = new FileStream(destinationPath, FileMode.Create))
 	{
-	    using (var source = new FileStream(sourcePath, FileMode.Open, FileAccess.Read))
-	    using (var destination = new FileStream(destinationPath, FileMode.Create))
+	    var buffer = new Memory<byte>(new byte[bufferSize]);
+	    var accumulated = new List<byte>();
+	    var encoder = Encoding.UTF8;
+	    bool headerFound = false;
+
+	    for (int inputLength; (inputLength = await source.ReadAsync(buffer)) > 0;)
 	    {
-		var buffer = new Memory<byte>(new byte[bufferSize]);
-		var accumulated = new List<byte>();
-		var encoder = Encoding.UTF8;
-		bool headerFound = false;
-
-		for (int inputLength; (inputLength = await source.ReadAsync(buffer)) > 0;)
+		if (headerFound)
 		{
-		    if (headerFound)
-		    {
-			await destination.WriteAsync(buffer.Slice(0, inputLength));
-		    }
-		    else
-		    {
-			accumulated.AddRange(buffer.Slice(0, inputLength).ToArray());
-			var text = encoder.GetString(accumulated.ToArray());
-			var index = headerRowLocator(text);
+		    await destination.WriteAsync(buffer.Slice(0, inputLength));
+		}
+		else
+		{
+		    accumulated.AddRange(buffer.Slice(0, inputLength).ToArray());
+		    var text = encoder.GetString(accumulated.ToArray());
+		    var index = headerRowLocator(text);
 
-			if (index > -1)
-			{
-			    headerFound = true;
-			    var remaining = encoder.GetBytes(text.Substring(index));
-			    await destination.WriteAsync(remaining);
-			    accumulated.Clear();
-			}
+		    if (index > -1)
+		    {
+			headerFound = true;
+			var remaining = encoder.GetBytes(text.Substring(index));
+			await destination.WriteAsync(remaining);
+			accumulated.Clear();
 		    }
 		}
 	    }
-	}
-	catch (Exception ex)
-	{
-	    Console.Error.WriteLine($"ERROR: {ex.Message}");
 	}
     }
 
@@ -73,11 +66,19 @@ class Program
 
 	var program = new Program();
 
-	await program.CopyDataRows(sourcePath, destinationPath, text =>
+	try
 	{
-	    var matches = regex.Matches(text);
-	    return matches.Count > 0 ? matches[0].Index : -1;
-	}, bufferSize);
+	    await program.CopyDataRows(sourcePath, destinationPath, text =>
+	    {
+		var matches = regex.Matches(text);
+		return matches.Count > 0 ? matches[0].Index : -1;
+	    }, bufferSize);
+	}
+	catch (Exception ex)
+	{
+	    Console.Error.WriteLine($"ERROR: {ex.Message}");
+	    return 1;
+	}
 
 	return 0;
     }
