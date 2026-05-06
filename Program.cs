@@ -6,35 +6,34 @@ using System.Threading.Tasks;
 
 class Program
 {
-    async Task CopyDataRows(string sourcePath, string destinationPath, Func<string, int> headerRowLocator, int bufferSize)
+    static async Task CopyDataRows(string sourcePath, string destinationPath, Func<string, int> headerRowLocator, int bufferSize)
     {
-	using (var source = new FileStream(sourcePath, FileMode.Open, FileAccess.Read))
-	using (var destination = new FileStream(destinationPath, FileMode.Create))
+	using var source = new FileStream(sourcePath, FileMode.Open, FileAccess.Read);
+	using var destination = new FileStream(destinationPath, FileMode.Create);
+
+	var buffer = new Memory<byte>(new byte[bufferSize]);
+	var accumulated = new List<byte>();
+	var encoder = Encoding.UTF8;
+	bool headerFound = false;
+
+	for (int inputLength; (inputLength = await source.ReadAsync(buffer)) > 0;)
 	{
-	    var buffer = new Memory<byte>(new byte[bufferSize]);
-	    var accumulated = new List<byte>();
-	    var encoder = Encoding.UTF8;
-	    bool headerFound = false;
-
-	    for (int inputLength; (inputLength = await source.ReadAsync(buffer)) > 0;)
+	    if (headerFound)
 	    {
-		if (headerFound)
-		{
-		    await destination.WriteAsync(buffer.Slice(0, inputLength));
-		}
-		else
-		{
-		    accumulated.AddRange(buffer.Slice(0, inputLength).ToArray());
-		    var text = encoder.GetString(accumulated.ToArray());
-		    var index = headerRowLocator(text);
+		await destination.WriteAsync(buffer[..inputLength]);
+	    }
+	    else
+	    {
+		accumulated.AddRange(buffer[..inputLength].ToArray());
+		var text = encoder.GetString(accumulated.ToArray());
+		var index = headerRowLocator(text);
 
-		    if (index > -1)
-		    {
-			headerFound = true;
-			var remaining = encoder.GetBytes(text.Substring(index));
-			await destination.WriteAsync(remaining);
-			accumulated.Clear();
-		    }
+		if (index > -1)
+		{
+		    headerFound = true;
+		    var remaining = encoder.GetBytes(text[index..]);
+		    await destination.WriteAsync(remaining);
+		    accumulated.Clear();
 		}
 	    }
 	}
@@ -52,9 +51,7 @@ class Program
 
 	var (sourcePath, destinationPath, headerRowPattern) = (args[0], args[1], args[2]);
 
-	int bufferSize;
-
-	if (int.TryParse(args[3], out bufferSize) == false)
+	if (!int.TryParse(args[3], out var bufferSize))
 	{
 	    Console.WriteLine($"ERROR: The value {args[3]} is not a number");
 	    Console.WriteLine(usage);
@@ -64,11 +61,9 @@ class Program
 
 	var regex = new Regex(headerRowPattern, RegexOptions.Compiled | RegexOptions.Multiline);
 
-	var program = new Program();
-
 	try
 	{
-	    await program.CopyDataRows(sourcePath, destinationPath, text =>
+	    await CopyDataRows(sourcePath, destinationPath, text =>
 	    {
 		var matches = regex.Matches(text);
 		return matches.Count > 0 ? matches[0].Index : -1;
