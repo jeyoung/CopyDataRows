@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 class Program
 {
-    async Task CopyDataRows(string sourcePath, string destinationPath, Func<ReadOnlyMemory<byte>, int> headerRowLocator, int bufferSize)
+    async Task CopyDataRows(string sourcePath, string destinationPath, Func<string, int> headerRowLocator, int bufferSize)
     {
 	try
 	{
@@ -14,16 +14,29 @@ class Program
 	    using (var destination = new FileStream(destinationPath, FileMode.Create))
 	    {
 		var buffer = new Memory<byte>(new byte[bufferSize]);
+		var accumulated = new List<byte>();
+		var encoder = Encoding.UTF8;
+		bool headerFound = false;
 
-		for (int inputLength = 0, index = -1; (inputLength = await source.ReadAsync(buffer)) > 0;)
+		for (int inputLength; (inputLength = await source.ReadAsync(buffer)) > 0;)
 		{
-		    if (index > -1)
+		    if (headerFound)
 		    {
 			await destination.WriteAsync(buffer.Slice(0, inputLength));
 		    }
-		    else if ((index = headerRowLocator(buffer)) > -1)
+		    else
 		    {
-			await destination.WriteAsync(buffer.Slice(index, inputLength-index));
+			accumulated.AddRange(buffer.Slice(0, inputLength).ToArray());
+			var text = encoder.GetString(accumulated.ToArray());
+			var index = headerRowLocator(text);
+
+			if (index > -1)
+			{
+			    headerFound = true;
+			    var remaining = encoder.GetBytes(text.Substring(index));
+			    await destination.WriteAsync(remaining);
+			    accumulated.Clear();
+			}
 		    }
 		}
 	    }
@@ -60,9 +73,9 @@ class Program
 
 	var program = new Program();
 
-	await program.CopyDataRows(sourcePath, destinationPath, buffer =>
+	await program.CopyDataRows(sourcePath, destinationPath, text =>
 	{
-	    var matches = regex.Matches(Encoding.Default.GetString(buffer.Span));
+	    var matches = regex.Matches(text);
 	    return matches.Count > 0 ? matches[0].Index : -1;
 	}, bufferSize);
 
