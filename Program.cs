@@ -1,5 +1,4 @@
-﻿using System;
-using System.IO;
+﻿using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -59,7 +58,7 @@ class Program
 	    return 1;
 	}
 
-	var regex = new Regex(headerRowPattern, RegexOptions.Compiled | RegexOptions.Multiline);
+	var regex = new Regex(headerRowPattern, RegexOptions.Multiline);
 
 	try
 	{
