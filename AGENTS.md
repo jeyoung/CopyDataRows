@@ -55,3 +55,7 @@ dotnet run <source path> <destination path> <header pattern> <header length>
 ## Commit Message Style
 - Summary: `area: description` format (max 80 chars)
 - Detailed messages: wrap at 80 chars
+
+## Editing Guidelines
+- Do not change more code than absolutely necessary unless explicitly instructed
+- Maintain existing formatting conventions to minimise diffs
