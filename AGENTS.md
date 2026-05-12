@@ -1,27 +1,26 @@
 # AGENTS.md
 
 ## Project Overview
-- Single-file .NET 6.0 console application
+- Single-file .NET 10.0 console application
 - Copies data rows from a source CSV to a destination CSV, skipping header rows identified by regex pattern
 - Entry point: `Program.cs`
 
 ## Build & Run
 ```bash
-dotnet run <source path> <destination path> <header pattern> <header length>
+dotnet run <source path> <destination path> <header pattern> <buffer size>
 ```
 
 ## Code Conventions
 
 ### Language & Framework
-- C# with .NET 6.0
+- C# with .NET 10.0
 - `ImplicitUsings` enabled
 - `Nullable` enabled
 
 ### Structure
 - Single `Program` class, no namespace
 - All logic in `Program.cs`
-- Instance methods for business logic, `static Main` for entry point
-- Instantiate `Program` and call instance methods from `Main`
+- Static methods for business logic, `static Main` for entry point
 
 ### Naming
 - Methods: PascalCase (`CopyDataRows`, `Main`)
@@ -33,7 +32,7 @@ dotnet run <source path> <destination path> <header pattern> <header length>
 - `var` for implicit typing
 - Tuple deconstruction for multiple assignments: `var (a, b, c) = ...`
 - Lambda expressions for inline delegates
-- `using` statements with parentheses (not using declarations)
+- `using` declarations (not using statements with parentheses)
 
 ### Async Pattern
 - Use `async Task` for async methods
@@ -49,7 +48,7 @@ dotnet run <source path> <destination path> <header pattern> <header length>
 ### File I/O
 - Use `FileStream` with explicit `FileMode`
 - Use `Memory<byte>` for buffer operations
-- Use `Encoding.Default` for text encoding
+- Use `Encoding.UTF8` for text encoding
 - Use `Regex` with `RegexOptions.Multiline` for pattern matching
 
 ## Commit Message Style
