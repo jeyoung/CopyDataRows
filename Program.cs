@@ -47,7 +47,7 @@ class Program
 
     public static async Task<int> Main(string[] args)
     {
-	const string usage = "Usage: dotnet run <source path> <destination path> <header pattern> <header length>";
+	const string usage = "Usage: dotnet run <source path> <destination path> <header pattern> <buffer size>";
 
 	if (args.Length != 4)
 	{
@@ -61,7 +61,7 @@ class Program
 	{
 	    Console.WriteLine($"ERROR: The value {args[3]} is not a number");
 	    Console.WriteLine(usage);
-	    Console.WriteLine("<header length> must be a whole number");
+	    Console.WriteLine("<buffer size> must be a whole number");
 	    return 1;
 	}
 
