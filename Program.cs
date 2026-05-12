@@ -9,8 +9,9 @@ class Program
 	using var destination = new FileStream(destinationPath, FileMode.Create);
 
 	var buffer = new Memory<byte>(new byte[bufferSize]);
-	var accumulated = new List<byte>();
+	var accumulated = new byte[bufferSize];
 	var encoder = Encoding.UTF8;
+	int accumulatedLength = 0;
 	bool headerFound = false;
 
 	for (int inputLength; (inputLength = await source.ReadAsync(buffer)) > 0;)
@@ -21,8 +22,17 @@ class Program
 	    }
 	    else
 	    {
-		accumulated.AddRange(buffer[..inputLength].ToArray());
-		var text = encoder.GetString(accumulated.ToArray());
+		if (accumulatedLength + inputLength > accumulated.Length)
+		{
+		    var resized = new byte[accumulated.Length * 2];
+		    Buffer.BlockCopy(accumulated, 0, resized, 0, accumulatedLength);
+		    accumulated = resized;
+		}
+
+		buffer[..inputLength].Span.CopyTo(accumulated.AsSpan(accumulatedLength));
+		accumulatedLength += inputLength;
+
+		var text = encoder.GetString(accumulated, 0, accumulatedLength);
 		var index = headerRowLocator(text);
 
 		if (index > -1)
@@ -30,7 +40,6 @@ class Program
 		    headerFound = true;
 		    var remaining = encoder.GetBytes(text[index..]);
 		    await destination.WriteAsync(remaining);
-		    accumulated.Clear();
 		}
 	    }
 	}
