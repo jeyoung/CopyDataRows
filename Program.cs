@@ -9,7 +9,7 @@ class Program
 	using var destination = new FileStream(destinationPath, FileMode.Create);
 
 	var buffer = new Memory<byte>(new byte[bufferSize]);
-	var accumulated = new byte[bufferSize];
+	var accumulated = new byte[Math.Max(bufferSize, 4096)];
 	var encoder = Encoding.UTF8;
 	int accumulatedLength = 0;
 	bool headerFound = false;
@@ -38,8 +38,8 @@ class Program
 		if (index > -1)
 		{
 		    headerFound = true;
-		    var remaining = encoder.GetBytes(text[index..]);
-		    await destination.WriteAsync(remaining);
+		    var bytePos = encoder.GetByteCount(text.AsSpan(0, index));
+		    await destination.WriteAsync(accumulated.AsMemory(bytePos, accumulatedLength - bytePos));
 		}
 	    }
 	}
@@ -71,8 +71,8 @@ class Program
 	{
 	    await CopyDataRows(sourcePath, destinationPath, text =>
 	    {
-		var matches = regex.Matches(text);
-		return matches.Count > 0 ? matches[0].Index : -1;
+		var match = regex.Match(text);
+		return match.Success ? match.Index : -1;
 	    }, bufferSize);
 	}
 	catch (Exception ex)
